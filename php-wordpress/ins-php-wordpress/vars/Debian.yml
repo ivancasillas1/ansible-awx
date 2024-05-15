@@ -1,0 +1,6 @@
+---
+
+db_name: "Wordpress"        # nombre base de datos de wordpress
+db_user: "vagrant"             # usuario base de datos de wordpress
+db_password: "Viewnext"       # Contraseña usuario wordpress
+db_host: "192.168.10.43"       # IP del host

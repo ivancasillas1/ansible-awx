@@ -1,0 +1,9 @@
+---
+# Instalar MariaDB
+- name: Install MariaDB
+  hosts: cliente3
+  become: yes
+  become_method: sudo
+
+  roles:
+        - role: ins-mariadb      

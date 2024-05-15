@@ -1,0 +1,88 @@
+---
+
+- name: Update cache
+  yum:
+      name: '*'
+      state: latest
+      update_cache: true
+
+# Instalar paquetes necesario
+- name: Install required packages
+  yum:
+        name:
+            - php
+            - httpd
+            - php-cli
+            - php-fpm
+            - php-mysqlnd
+            - php-zip
+            - php-devel
+            - php-gd
+            - php-mcrypt
+            - php-mbstring
+            - php-curl
+            - php-xml
+            - php-pear
+            - php-bcmath
+        state: latest
+
+# Abrir puerto firewall para http
+- name: Enable http in firewall
+  firewalld:
+        service: http
+        permanent: true
+        state: enabled
+
+# copiar ficheros wordpress para instalación
+- name: Download Wordpress
+  unarchive:
+          src: https://wordpress.org/latest.tar.gz
+          dest: /var/www/html/
+          remote_src: yes
+          owner: apache
+          group: apache
+          mode: '0755'
+
+# Establecer configuración de wordpress
+- name: Set config
+  template:
+        src: files/{{ ansible_os_family }}/wp-config.php
+        dest: /var/www/html/wordpress/wp-config.php
+        owner: root
+        group: root
+        mode: '0644'
+  register: "config"
+
+# Importar archivo wordpress.conf
+- name: Import file wordpress.conf(proxy)
+  template:
+        src: files/{{ ansible_os_family }}/wordpress.conf.j2
+        dest: /etc/httpd/conf.d/wordpress.conf
+        owner: root
+        group: root
+        mode: '0644'
+  register: "config_2"
+
+# Reiniciar servicio Apache Web Server
+- name: Restart Apache web Server
+  service:
+        name: httpd
+        state: restarted
+  when: "config.changed or config_2.changed"
+
+# Deshabilitar módulo SELinux
+- name: Disable SELinux
+  template:
+        src: files/{{ ansible_os_family }}/config
+        dest: /etc/selinux/config
+        owner: root
+        group: root
+        mode: '0644'
+  register: "reboot"
+
+# Reiniciar servidor
+- name: Reboot server
+  reboot:
+      reboot_timeout: 60
+      post_reboot_delay: 30
+  when: "reboot.changed"

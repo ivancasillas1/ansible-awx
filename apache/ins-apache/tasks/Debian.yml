@@ -1,0 +1,58 @@
+--- 
+# Intalación apache
+- name: Install apache2
+  apt: 
+        name: apache2
+        state: latest
+
+# Iniciar servicio apache
+- name: Start apache2
+  service: 
+        name: apache2
+        state: started
+
+# Abrir puertos firewall
+- name: Install ufw
+  apt: 
+        name: ufw
+        state: present
+
+# Habilitar servicio uwf
+- name: Enable ufw service
+  ufw:
+        state: enabled
+
+# Abrir puerto 80
+- name: Open port 80
+  ufw: 
+        rule: allow
+        port: "80"
+  register: port_80
+
+# Abrir puerto 443
+- name: Open port 443
+  ufw:
+        rule: allow
+        port: "433"
+  register: port_443
+
+# Abrir puerto 22
+- name: Open port 22
+  ufw:
+        rule: allow
+        port: "22"
+
+# Reiniciar firewall
+- name: Reload firewall
+  ufw: 
+        state: reloaded
+  when: port_80.changed or port_433.changed
+  register: firewall
+
+# Reiniciar apache
+- name: Restart apache
+  become: yes
+  service: 
+        name: apache2
+        state: restarted
+  when: firewall.changed

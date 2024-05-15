@@ -1,0 +1,8 @@
+---
+# Create Backup
+- name: Backup database Wordpress
+  hosts: cliente3
+  become: true
+
+  roles:
+          - role: backup-MariaDB

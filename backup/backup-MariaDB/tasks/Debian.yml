@@ -1,0 +1,52 @@
+---
+
+# tasks file for backup
+- name: Check backup directory
+  file:
+          path: /backup/MariaDB
+          state: directory
+          mode: '0755'
+  register: exist
+
+# Obtener fecha y hora
+- name: Get current date and time
+  set_fact:
+          timestamp: "{{ ansible_date_time.date }}:{{ ansible_date_time.time }}"
+
+# Comprobar que exista algún backup
+- name: Check backup
+  stat:
+          path: "/backup/MariaDB/{{ db_name }}-{{ ansible_host }}_{{ timestamp }}_.sql"
+
+# Realizar la copia de seguridad
+- name: Create Database backup
+  mysql_db:
+          name: "{{ db_name }}"
+          login_user: "{{ db_username }}"
+          login_password: "{{ db_password }}"
+          stat: dump
+          target: "/backup/MariaDB/{{ db_name }}-{{ ansible_host }}_{{ timestamp }}_.sql"
+  register: backup
+  when: exist.stat.islnk is not defined
+
+# Comprobar estado del backup
+- name: Check backup
+  stat:
+          path: "/backup/MariaDB/{{ db_name }}-{{ ansible_host }}_backup_{{ timestamp }}.sql"
+  register: result
+
+# Importar copia de datos
+- name: Import backup to control node
+  fetch:
+          src: "/backup/MariaDB/{{ db_name }}-{{ ansible_host }}_backup_{{ timestamp }}.sql"
+          dest: "{{ backups_dir }}/MariaDB/{{ ansible_host }}/"
+          flat: yes
+  registe: fetch_result
+
+# Crear registro
+- name: Create register file
+  copy:
+          content: "{{ fetch_result.dest }}"
+          dest: "{{ backup_dir }}/backup_file.txt"
+  delegate_to: localhost
+  when: register_file in "Y, y, YES, Yes" and backup is changed

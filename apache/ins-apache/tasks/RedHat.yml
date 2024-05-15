@@ -1,0 +1,48 @@
+---
+
+# Instalar httpd
+- name: install http
+  yum:
+        name: httpd
+        state: latest
+  retries: 3
+  delay: 10
+
+# Iniciar y habilitar servicio httpd
+- name: Start & enable httpd service
+  service:
+        name: httpd
+        state: started
+        enabled: true
+
+# Abrir puertos del firewall
+- name: Open ports with firewalld
+  firewalld:
+        service: http
+        permanent: true
+        state: enabled
+  register: firewalld
+  ignore_errors: true
+
+# Reiniciar firewall y cargar cambios 
+- name: Reload firewall
+  service:
+        name: firewalld
+        state: reloaded
+  when: firewalld is changed
+
+# Abrir puertos con iptables
+- name: Open ports with iptables
+  iptables: 
+        chain: INPUT
+        protocol: tcp
+        destination_port: 80
+        jump: ACCEPT 
+  when: firewalld is failed
+
+# Reiniciar httpd
+- name: Restart http
+  service: 
+        name: httpd
+        state: restarted
+        enabled: yes

@@ -1,0 +1,95 @@
+---
+
+- name: Update cache
+  apt:
+      name: '*'
+      state: latest
+      update_cache: true
+
+# Instalar MariaDB
+- name: Install MariaDB
+  apt:
+      name:
+          - mariadb-server
+          - python3
+          - python3-mysqldb
+          - ufw
+      state: latest
+  register: install
+
+# Iniciar servicio MariaDB
+- name: Start MariaDB
+  service:
+      name: mariadb
+      enabled: true
+      state: started
+
+# Secure_installation y cambio de contraseña usuraio root
+- name: Mysql-secure-installation
+  shell:
+      echo -e "\nn\nY\n{{ db_root_password }}\n{{ db_root_password }}\nYnn\nY\nY\n" | sudo mysql_secure_installation
+  args:
+      executable: /bin/bash
+  when: install.changed
+
+# Importar configuración MariaDB
+- name: Set config
+  template:
+      src: files/50-server-debian.cnf
+      dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+      owner: root
+      group: root
+      mode: '0755'
+  register: config
+
+# Reiniciar Mariadb y aplicar cambios
+- name: restart MariaDB
+  service:
+      name: mariadb
+      enabled: true
+      state: restarted
+  when: config.changed
+
+# Creación de la base de datos de wordpress
+- name: create database
+  mysql_db:
+      name: "{{ database_name }}"
+      login_user: "{{ db_root_user }}"
+      login_password: "{{ db_root_password }}"
+      state: present
+
+# Creación usuario para la base de datos
+- name: Create user
+  mysql_user:
+      login_user: "{{ db_root_user }}"
+      login_password: "{{ db_root_password }}"
+      name: "{{ db_username }}"
+      password: "{{ db_user_password }}"
+      priv: 'Wordpress.*:ALL,GRANT'
+      host: '%'
+      state: present
+
+# Habilitar MariaDB en Firewall
+- name: Enable firewall
+  ufw:
+      state: enabled
+
+# Abrir puerto 3306 en firewall para conexión remota
+- name: Open port 3306
+  ufw:
+      rule: allow
+      port: 3306
+  register: port_3306
+
+# Habilitar puerto 22
+- name: Open port 22
+  ufw:
+      rule: allow
+      port: 22
+  register: port_22
+
+# Reiniciar servicio firewall
+- name: Reload firewall
+  ufw:
+      state: reloaded
+  when: port_3306.changed or port_22.changed

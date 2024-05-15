@@ -1,0 +1,12 @@
+---
+# vars file for backup
+
+db_name: Wordpress
+db_username: root
+db_password: Viewnext
+
+# Path to save backups
+
+bakup_dir: "/home/vagrant/backups"
+
+register_file: n

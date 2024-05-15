@@ -1,0 +1,9 @@
+---
+
+db_root_password: "Viewnext"
+db_root_user: "root"
+database_name: "Wordpress"
+db_username: "vagrant"
+db_user_password: "Viewnext"
+
+service: "mariadb"

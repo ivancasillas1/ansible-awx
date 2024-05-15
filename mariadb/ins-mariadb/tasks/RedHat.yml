@@ -1,0 +1,92 @@
+--- 
+
+# Actualizar caché de los repositorios
+- name: Update repoitory cache
+  yum:
+          name: '*'
+          state: latest
+          update_cache: yes
+
+# Instalar MariaDB
+- name: Install MariaDB
+  yum:
+          name:
+                  - mariadb-server
+                  - python3
+                  - python3-PyMySQL
+          state: latest
+  register: install
+
+# Iniciar MariaDB
+- name: Start MariaDB
+  service:
+          name: mariadb
+          enabled: true
+          state: started
+
+# Cambiar contraseña a usuario root
+- name: Run mysql_secure_installation
+  shell:
+          echo -e "\nn\nY\n{{ db_root_password }}\n{{ db_root_password }}\nY\nn\nY\nY\n" | sudo mysql_secure_installation
+  args:
+          executable: /bin/bash
+  when: install.changed
+
+# Reiniciar MariaDb
+- name: Restart MariaDb
+  service:
+          name: mariadb
+          state: restarted
+  when: install.changed
+
+# Crear base de datos
+- name: Create database
+  mysql_db:
+          name: "{{ database_name }}"
+          login_user: "{{ db_root_user }}"
+          login_password: "{{ db_root_password }}"
+          state: present
+
+# Crear usuario para la base de datos
+- name: Create user to database
+  mysql_user:
+          login_user: "{{ db_root_user }}"
+          login_password: "{{ db_root_password }}"
+          name: "{{ db_username }}"
+          password: "{{ db_user_password }}"
+          priv: 'Wordpress.*:ALL,GRANT'
+          host: '%'
+          state: present
+
+# Habilitar servicio mysql en firewall
+- name: Enable mysql service in firewall
+  firewalld:
+          service: mysql
+          permanent: true
+          state: enabled
+  register: firewalld
+  ignore_errors: true
+
+# Abrir puerto 3306
+- name: Open port 3306
+  firewalld:
+          port: 3306/tcp
+          permanent: true
+          state: enabled
+  when: firewalld.changed
+
+# Reiniciar firewall
+- name: Restart firewall
+  systemd:
+          name: firewalld
+          state: restarted
+  when: firewalld.changed
+
+# Abrir puertos de mariadb con iptables
+- name: Open ports to MariaDB service with iptables
+  iptables:
+          chain: INPUT
+          protocol: tcp
+          destination_port: 3306
+          jump: ACCEPT
+  when: firewalld.failed

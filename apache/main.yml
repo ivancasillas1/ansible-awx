@@ -1,0 +1,10 @@
+---
+# Instalación de apache
+- name: Install Apache
+  hosts: cliente4
+  become: yes
+  become_method: sudo
+
+  roles:
+    - role: ins-apache
+ 
